@@ -1,5 +1,7 @@
 # Chooser
 
+<img src="Resources/Chooser.png" alt="Ikona Chooser — rozgałęziające się strzałki" width="128">
+
 Mała, lokalna aplikacja macOS w Swift + AppKit (SwiftUI służy wyłącznie do rysowania cienia). Bez bibliotek zewnętrznych, rozszerzeń, serwera, telemetrii ani chmury. Wymaga macOS 13 lub nowszego.
 
 ## Instalacja

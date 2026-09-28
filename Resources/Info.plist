@@ -4,6 +4,7 @@
 <key>CFBundleIdentifier</key><string>local.tomasz.Chooser</string>
 <key>CFBundleName</key><string>Chooser</string>
 <key>CFBundleDisplayName</key><string>Chooser</string>
+<key>CFBundleIconFile</key><string>Chooser</string>
 <key>CFBundleExecutable</key><string>Chooser</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>1.0.0</string>
