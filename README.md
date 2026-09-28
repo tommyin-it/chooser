@@ -6,11 +6,15 @@ Open links in **Brave or Chrome** with a small macOS menu bar app. Choose a brow
 
 **[Download DMG or ZIP](https://github.com/tommyin-it/chooser/releases/latest)** · macOS 13+ · Apple Silicon & Intel
 
+<a id="install--no-developer-tools-needed"></a>
+
 ## Install
 
 1. Download the DMG, open it, and drag **Chooser.app** to **Applications**.
 2. Eject the DMG and open Chooser from Applications.
 3. Click its menu bar icon → **Settings → Get started → Connect…** to enable link handling.
+
+<a id="first-launch-and-signing"></a>
 
 The app is **not Apple-notarized**. If macOS blocks first launch, follow [Apple’s instructions](https://support.apple.com/en-am/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac) to use **Privacy & Security → Open Anyway**, if available.
 
