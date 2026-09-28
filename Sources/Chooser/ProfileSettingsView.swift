@@ -5,8 +5,8 @@ final class ProfileSettingsView: NSView, NSTableViewDataSource, NSTableViewDeleg
     private let chrome = NSPopUpButton()
     private let brave = NSPopUpButton()
     private let picker = NSPopUpButton()
-    private let add = NSButton(title: "Dodaj", target: nil, action: nil)
-    private let master = NSButton(checkboxWithTitle: "Pokaż dodatkowe profile w okienku", target: nil, action: nil)
+    private let add = NSButton(title: L("Add", "Dodaj"), target: nil, action: nil)
+    private let master = NSButton(checkboxWithTitle: L("Show extra profiles in the chooser", "Pokaż dodatkowe profile w okienku"), target: nil, action: nil)
     private let table = NSTableView()
     private let status = NSTextField(labelWithString: "")
     private var available: [Browser: [BrowserProfile]] = [:]
@@ -15,11 +15,11 @@ final class ProfileSettingsView: NSView, NSTableViewDataSource, NSTableViewDeleg
     init(preferences: Preferences) {
         self.preferences = preferences
         super.init(frame: .zero)
-        let title = NSTextField(labelWithString: "Twoje profile")
+        let title = NSTextField(labelWithString: L("Your profiles", "Twoje profile"))
         title.font = .systemFont(ofSize: 20, weight: .semibold)
-        let subtitle = NSTextField(labelWithString: "Zapisz raz. Włączaj wtedy, gdy ich potrzebujesz.")
+        let subtitle = NSTextField(labelWithString: L("Save once. Enable whenever you need them.", "Zapisz raz. Włączaj wtedy, gdy ich potrzebujesz."))
         subtitle.textColor = .secondaryLabelColor
-        let grid = NSGridView(views: [[NSTextField(labelWithString: "Główny Brave"), brave], [NSTextField(labelWithString: "Główny Chrome"), chrome]])
+        let grid = NSGridView(views: [[NSTextField(labelWithString: L("Primary Brave", "Główny Brave")), brave], [NSTextField(labelWithString: L("Primary Chrome", "Główny Chrome")), chrome]])
         grid.columnSpacing = 18; grid.rowSpacing = 10; grid.rowAlignment = .firstBaseline
         for popup in [brave, chrome] {
             popup.widthAnchor.constraint(equalToConstant: 330).isActive = true
@@ -49,10 +49,10 @@ final class ProfileSettingsView: NSView, NSTableViewDataSource, NSTableViewDeleg
         add.bezelStyle = .rounded
         add.target = self; add.action = #selector(addProfile)
         let addRow = NSStackView(views: [picker, add]); addRow.spacing = 12
-        let refresh = NSButton(title: "Odśwież profile", target: self, action: #selector(reload))
+        let refresh = NSButton(title: L("Refresh profiles", "Odśwież profile"), target: self, action: #selector(reload))
         refresh.bezelStyle = .rounded
         status.font = .systemFont(ofSize: 11); status.textColor = .secondaryLabelColor
-        let tip = NSTextField(labelWithString: "Wyłączenie zachowuje profil. Kosz usuwa go tylko z Choosera.")
+        let tip = NSTextField(labelWithString: L("Disabling keeps the profile. Delete only removes it from Chooser.", "Wyłączenie zachowuje profil. Kosz usuwa go tylko z Choosera."))
         tip.font = .systemFont(ofSize: 11); tip.textColor = .secondaryLabelColor
         let stack = NSStackView(views: [title, subtitle, grid, master, scroll, status, addRow, refresh, tip])
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 13
@@ -74,7 +74,7 @@ final class ProfileSettingsView: NSView, NSTableViewDataSource, NSTableViewDeleg
         available = [.brave: ProfileCatalog.profiles(for: .brave), .chrome: ProfileCatalog.profiles(for: .chrome)]
         for (browser, popup) in [(Browser.brave, brave), (.chrome, chrome)] {
             if let saved = preferences.mainProfile(for: browser), !available[browser, default: []].contains(where: { $0.directory == saved.directory }) { available[browser, default: []].append(saved) }
-            popup.removeAllItems(); popup.addItem(withTitle: "Według przeglądarki")
+            popup.removeAllItems(); popup.addItem(withTitle: L("Browser default", "Według przeglądarki"))
             for (index, profile) in available[browser, default: []].enumerated() {
                 append(profile, to: popup, includeBrowser: false)
                 if preferences.mainProfile(for: browser)?.directory == profile.directory { popup.selectItem(at: index + 1) }
@@ -82,7 +82,7 @@ final class ProfileSettingsView: NSView, NSTableViewDataSource, NSTableViewDeleg
         }
         let savedIDs = Set(preferences.savedProfiles.map(\.id))
         candidates = Browser.allCases.flatMap { available[$0, default: []] }.filter { !savedIDs.contains(SavedProfile(profile: $0).id) }
-        picker.removeAllItems(); picker.addItem(withTitle: "Wybierz profil do zapisania…")
+        picker.removeAllItems(); picker.addItem(withTitle: L("Choose a profile to save…", "Wybierz profil do zapisania…"))
         for profile in candidates { append(profile, to: picker, includeBrowser: true) }
         add.isEnabled = false
         master.state = preferences.showsExtraProfiles ? .on : .off
@@ -97,7 +97,7 @@ final class ProfileSettingsView: NSView, NSTableViewDataSource, NSTableViewDeleg
         item.image = icon; popup.menu?.addItem(item)
     }
     private func updateStatus() {
-        status.stringValue = preferences.savedProfiles.isEmpty ? "Dodaj pierwszy dodatkowy profil poniżej." : "Zapisane: \(preferences.savedProfiles.count) · widoczne: \(preferences.activeProfiles.count)"
+        status.stringValue = preferences.savedProfiles.isEmpty ? L("Add your first extra profile below.", "Dodaj pierwszy dodatkowy profil poniżej.") : L("Saved: \(preferences.savedProfiles.count) · visible: \(preferences.activeProfiles.count)", "Zapisane: \(preferences.savedProfiles.count) · widoczne: \(preferences.activeProfiles.count)")
     }
     func numberOfRows(in tableView: NSTableView) -> Int { preferences.savedProfiles.count }
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
@@ -120,12 +120,12 @@ final class ProfileSettingsView: NSView, NSTableViewDataSource, NSTableViewDeleg
             if tableColumn?.identifier.rawValue == "enabled" {
                 button = NSButton(checkboxWithTitle: "", target: self, action: #selector(toggleProfile(_:)))
                 button.state = entry.isEnabled ? .on : .off
-                button.setAccessibilityLabel("Pokaż profil \(entry.profile.label)")
-                button.toolTip = "Włącz lub wyłącz profil, zachowując go na liście"
+                button.setAccessibilityLabel(L("Show profile \(entry.profile.label)", "Pokaż profil \(entry.profile.label)"))
+                button.toolTip = L("Enable or disable this profile without removing it", "Włącz lub wyłącz profil, zachowując go na liście")
             } else {
-                button = NSButton(image: NSImage(systemSymbolName: "trash", accessibilityDescription: "Usuń")!, target: self, action: #selector(removeProfile(_:)))
+                button = NSButton(image: NSImage(systemSymbolName: "trash", accessibilityDescription: L("Delete", "Usuń"))!, target: self, action: #selector(removeProfile(_:)))
                 button.isBordered = false; button.contentTintColor = .secondaryLabelColor
-                button.setAccessibilityLabel("Usuń zapisany profil \(entry.profile.label)")
+                button.setAccessibilityLabel(L("Remove saved profile \(entry.profile.label)", "Usuń zapisany profil \(entry.profile.label)"))
             }
             button.tag = row; button.translatesAutoresizingMaskIntoConstraints = false; cell.addSubview(button)
             NSLayoutConstraint.activate([button.centerXAnchor.constraint(equalTo: cell.centerXAnchor), button.centerYAnchor.constraint(equalTo: cell.centerYAnchor)])

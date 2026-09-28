@@ -30,7 +30,7 @@ final class BrowserButton: NSButton {
         fill.frame = bounds.insetBy(dx: 3, dy: 3)
         fill.cornerRadius = 7
         layer?.addSublayer(fill)
-        setAccessibilityLabel("Otwórz w \(choice.browser.name), \(choice.name), \(shortcut)")
+        setAccessibilityLabel(L("Open in \(choice.browser.name), \(choice.name), \(shortcut)", "Otwórz w \(choice.browser.name), \(choice.name), \(shortcut)"))
         toolTip = "\(choice.browser.name) · \(choice.name) · \(shortcut)"
         target = self
         action = #selector(choose)
@@ -144,7 +144,7 @@ func populateChooser(_ content: NSView, choices: [BrowserChoice], layout: Choose
             scroll.hasVerticalScroller = false
             scroll.scrollerStyle = .overlay
             scroll.autohidesScrollers = true
-            scroll.toolTip = "Profile \(group.browser.name). Przewiń, aby zobaczyć pozostałe."
+            scroll.toolTip = L("\(group.browser.name) profiles. Scroll to see more.", "Profile \(group.browser.name). Przewiń, aby zobaczyć pozostałe.")
             let document = NSView(frame: NSRect(origin: .zero, size: group.documentSize))
             for (position, index) in group.profileIndices.enumerated() {
                 let button = BrowserButton(choice: choices[index], index: index, frame: group.profileFrames[position], horizontal: true)

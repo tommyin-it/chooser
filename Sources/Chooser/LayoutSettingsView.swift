@@ -8,7 +8,7 @@ private final class LayoutOption: NSButton {
         title = style.name
         isBordered = false
         self.target = target; self.action = action
-        setAccessibilityLabel("Układ: \(style.name)")
+        setAccessibilityLabel(L("Layout: \(style.name)", "Układ: \(style.name)"))
         widthAnchor.constraint(equalToConstant: 250).isActive = true
         heightAnchor.constraint(equalToConstant: 76).isActive = true
     }
@@ -17,7 +17,7 @@ private final class LayoutOption: NSButton {
         let shape = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 11, yRadius: 11)
         (state == .on ? NSColor.controlAccentColor.withAlphaComponent(0.10) : NSColor.controlBackgroundColor).setFill(); shape.fill()
         if state == .on { NSColor.controlAccentColor.setStroke(); shape.lineWidth = 2; shape.stroke() }
-        let examples = [BrowserProfile(browser: .brave, directory: "Default", name: "Praca"), BrowserProfile(browser: .chrome, directory: "Default", name: "Osobisty")]
+        let examples = [BrowserProfile(browser: .brave, directory: "Default", name: L("Work", "Praca")), BrowserProfile(browser: .chrome, directory: "Default", name: L("Personal", "Osobisty"))]
         let layout = ChooserLayout.make(cursor: .zero, screen: NSRect(x: 0, y: 0, width: 1000, height: 1000), extras: examples, style: layoutStyle)
         let scale = min(95 / layout.frame.width, 54 / layout.frame.height)
         for (index, group) in layout.groups.enumerated() {
@@ -40,18 +40,18 @@ final class LayoutSettingsView: NSView {
     init(preferences: Preferences) {
         self.preferences = preferences
         super.init(frame: .zero)
-        let title = NSTextField(labelWithString: "Jak chcesz wybierać?")
+        let title = NSTextField(labelWithString: L("How would you like to choose?", "Jak chcesz wybierać?"))
         title.font = .systemFont(ofSize: 20, weight: .semibold)
-        let subtitle = NSTextField(labelWithString: "Wybierz układ okienka, które pojawia się po kliknięciu linku.")
+        let subtitle = NSTextField(labelWithString: L("Choose the layout that appears when you open a link.", "Wybierz układ okienka, które pojawia się po kliknięciu linku."))
         subtitle.font = .systemFont(ofSize: 12); subtitle.textColor = .secondaryLabelColor
         options = ChooserStyle.allCases.map { LayoutOption(style: $0, target: self, action: #selector(selectLayout(_:))) }
         let grid = NSGridView(views: [[options[0], options[1]], [options[2], options[3]]])
         grid.rowSpacing = 10; grid.columnSpacing = 10
-        let caption = NSTextField(labelWithString: "Podgląd Twoich aktywnych opcji")
+        let caption = NSTextField(labelWithString: L("Preview of your enabled options", "Podgląd Twoich aktywnych opcji"))
         caption.font = .systemFont(ofSize: 12, weight: .semibold)
         preview.widthAnchor.constraint(equalToConstant: 510).isActive = true
         preview.heightAnchor.constraint(equalToConstant: 190).isActive = true
-        let hint = NSTextField(labelWithString: "Profile są pod swoją przeglądarką · ⌘1–⌘9 wybiera opcje.")
+        let hint = NSTextField(labelWithString: L("Profiles sit below their browser · ⌘1–⌘9 selects an option.", "Profile są pod swoją przeglądarką · ⌘1–⌘9 wybiera opcje."))
         hint.font = .systemFont(ofSize: 11); hint.textColor = .secondaryLabelColor
         let stack = NSStackView(views: [title, subtitle, grid, caption, preview, hint])
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 16

@@ -46,8 +46,8 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
     private let tabs = NSTabView()
     private let mode = NSPopUpButton()
     private let recorder = ShortcutRecorder()
-    private let login = NSButton(checkboxWithTitle: "Start przy logowaniu", target: nil, action: nil)
-    private let loginApproval = NSButton(title: "Zatwierdź…", target: nil, action: nil)
+    private let login = NSButton(checkboxWithTitle: L("Launch at login", "Start przy logowaniu"), target: nil, action: nil)
+    private let loginApproval = NSButton(title: L("Approve…", "Zatwierdź…"), target: nil, action: nil)
     private let progress = NSTextField(labelWithString: "")
     private var defaultButton: NSButton!
     private var defaultCard: SetupCard!
@@ -57,8 +57,8 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
 
     init(app: AppDelegate) {
         self.app = app
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 600), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = "Chooser — Ustawienia"
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 680, height: 650), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        window.title = L("Chooser — Settings", "Chooser — Ustawienia")
         window.isReleasedWhenClosed = false
         window.isRestorable = false
         super.init(window: window)
@@ -68,43 +68,43 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
         tabs.autoresizingMask = [.width, .height]
         window.contentView!.addSubview(tabs)
         let general = NSTabViewItem(identifier: "general")
-        general.label = "Start"
+        general.label = L("Get started", "Start")
         let generalView = NSView()
         general.view = generalView
         tabs.addTabViewItem(general)
         let rulesTab = NSTabViewItem(identifier: "rules")
-        rulesTab.label = "Reguły aplikacji"
+        rulesTab.label = L("App rules", "Reguły aplikacji")
         rulesView = ApplicationRulesView(preferences: app.preferences)
         rulesView.onChange = { [weak self] in self?.refresh() }
         rulesTab.view = rulesView
         tabs.addTabViewItem(rulesTab)
         let profileTab = NSTabViewItem(identifier: "profiles")
-        profileTab.label = "Profile"
+        profileTab.label = L("Profiles", "Profile")
         profileTab.view = ProfileSettingsView(preferences: app.preferences)
         tabs.addTabViewItem(profileTab)
         let layoutTab = NSTabViewItem(identifier: "layout")
-        layoutTab.label = "Wygląd"
+        layoutTab.label = L("Appearance", "Wygląd")
         layoutTab.view = LayoutSettingsView(preferences: app.preferences)
         tabs.addTabViewItem(layoutTab)
         tabs.delegate = self
 
-        let heading = NSTextField(labelWithString: "Linki po Twojemu.")
+        let heading = NSTextField(labelWithString: L("Your links. Your choice.", "Linki po Twojemu."))
         heading.font = .systemFont(ofSize: 25, weight: .bold)
         progress.font = .systemFont(ofSize: 12)
         progress.textColor = .secondaryLabelColor
-        defaultButton = NSButton(title: "Połącz…", target: self, action: #selector(makeDefault))
+        defaultButton = NSButton(title: L("Connect…", "Połącz…"), target: self, action: #selector(makeDefault))
         defaultButton.bezelStyle = .rounded
-        defaultCard = SetupCard(symbol: "link", title: "1. Obsługa linków", detail: "Ustaw Chooser jako domyślny.", action: defaultButton)
-        defaultCard.toolTip = "macOS poprosi o zgodę na obsługę HTTP i HTTPS. Nie potrzebujemy Dostępności ani Monitorowania wprowadzania."
-        shortcutCard = SetupCard(symbol: "keyboard", title: "2. Twój skrót", detail: "Przełączaj Wybór → Brave → Chrome.", action: recorder)
-        recorder.toolTip = "Kliknij i naciśnij kombinację. Hyper to Control + Option + Command + Shift. Z Karabinerem możesz użyć Caps Lock + B. Escape anuluje."
-        let addRule = NSButton(title: "Dodaj aplikację…", target: self, action: #selector(addFirstRule))
+        defaultCard = SetupCard(symbol: "link", title: L("1. Link handling", "1. Obsługa linków"), detail: L("Make Chooser your default browser.", "Ustaw Chooser jako domyślny."), action: defaultButton)
+        defaultCard.toolTip = L("macOS will ask to route HTTP and HTTPS links to Chooser. Accessibility and Input Monitoring are not required.", "macOS poprosi o zgodę na obsługę HTTP i HTTPS. Nie potrzebujemy Dostępności ani Monitorowania wprowadzania.")
+        shortcutCard = SetupCard(symbol: "keyboard", title: L("2. Your shortcut", "2. Twój skrót"), detail: L("Cycle Choose → Brave → Chrome.", "Przełączaj Wybór → Brave → Chrome."), action: recorder)
+        recorder.toolTip = L("Click and press a shortcut. Hyper is Control + Option + Command + Shift. With Karabiner you can use Caps Lock + B. Escape cancels.", "Kliknij i naciśnij kombinację. Hyper to Control + Option + Command + Shift. Z Karabinerem możesz użyć Caps Lock + B. Escape anuluje.")
+        let addRule = NSButton(title: L("Add app…", "Dodaj aplikację…"), target: self, action: #selector(addFirstRule))
         addRule.bezelStyle = .rounded
-        rulesCard = SetupCard(symbol: "arrow.triangle.branch", title: "3. Reguły aplikacji", detail: "Opcjonalnie · np. Slack → Chrome.", action: addRule)
+        rulesCard = SetupCard(symbol: "arrow.triangle.branch", title: L("3. App rules", "3. Reguły aplikacji"), detail: L("Optional · e.g. Slack → Chrome.", "Opcjonalnie · np. Slack → Chrome."), action: addRule)
         mode.addItems(withTitles: Mode.allCases.map(\.name))
         mode.target = self
         mode.action = #selector(modeChanged)
-        let modeLabel = NSTextField(labelWithString: "Tryb bez reguły")
+        let modeLabel = NSTextField(labelWithString: L("Mode without a rule", "Tryb bez reguły"))
         modeLabel.font = .systemFont(ofSize: 12)
         let modeRow = NSStackView(views: [modeLabel, mode])
         modeRow.spacing = 12
@@ -115,7 +115,14 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
         loginApproval.action = #selector(approveLogin)
         let loginRow = NSStackView(views: [login, loginApproval])
         loginRow.spacing = 12
-        let stack = NSStackView(views: [heading, progress, defaultCard, shortcutCard, rulesCard, modeRow, loginRow])
+        let language = NSPopUpButton()
+        language.addItems(withTitles: AppLanguage.allCases.map(\.name))
+        language.selectItem(at: AppLanguage.allCases.firstIndex(of: Localization.language)!)
+        language.target = self
+        language.action = #selector(languageChanged(_:))
+        let languageRow = NSStackView(views: [NSTextField(labelWithString: L("Language", "Język")), language])
+        languageRow.spacing = 12
+        let stack = NSStackView(views: [heading, progress, defaultCard, shortcutCard, rulesCard, modeRow, loginRow, languageRow])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 14
@@ -131,7 +138,7 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
         for card in [defaultCard!, shortcutCard!, rulesCard!] { card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
         recorder.onBegin = { [weak self] in
             self?.app.hotKey.unregister()
-            self?.shortcutCard.detail.stringValue = "Naciśnij kombinację · Esc anuluje."
+            self?.shortcutCard.detail.stringValue = L("Press a shortcut · Esc cancels.", "Naciśnij kombinację · Esc anuluje.")
         }
         recorder.onCancel = { [weak self] in self?.restoreShortcut() }
         recorder.onRecord = { [weak self] shortcut in
@@ -143,7 +150,7 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
                 self.refresh()
             } else {
                 self.restoreShortcut()
-                self.app.alert("Skrót jest zajęty", "Wybierz inną kombinację. Kod systemowy: \(result).")
+                self.app.alert(L("Shortcut unavailable", "Skrót jest zajęty"), L("Choose another shortcut. System code: \(result).", "Wybierz inną kombinację. Kod systemowy: \(result)."))
             }
         }
         refresh()
@@ -152,8 +159,8 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
     func refresh() {
         mode.selectItem(at: Mode.allCases.firstIndex(of: app.preferences.mode)!)
         if !recorder.recording {
-            recorder.title = app.preferences.hasRecordedShortcut ? app.preferences.shortcut.label + " · zmień" : "Nagraj skrót…"
-            shortcutCard.detail.stringValue = app.preferences.hasRecordedShortcut ? "Gotowe · działa w każdej aplikacji." : "Domyślnie Hyper + B. Wybierz własny."
+            recorder.title = app.preferences.hasRecordedShortcut ? app.preferences.shortcut.label + L(" · change", " · zmień") : L("Record shortcut…", "Nagraj skrót…")
+            shortcutCard.detail.stringValue = app.preferences.hasRecordedShortcut ? L("Ready · works across apps.", "Gotowe · działa w każdej aplikacji.") : L("Default: Hyper + B. Choose your own.", "Domyślnie Hyper + B. Wybierz własny.")
         }
         let status = SMAppService.mainApp.status
         login.state = status == .enabled || status == .requiresApproval ? .on : .off
@@ -163,12 +170,12 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
             return Bundle(url: handler)?.bundleIdentifier == Bundle.main.bundleIdentifier
         }
         let linked = schemes.count == 2
-        defaultCard.detail.stringValue = linked ? "Gotowe · linki trafiają do Chooser." : "Jednorazowa zgoda w macOS."
-        defaultButton.title = linked ? "✓ Połączono" : "Połącz…"
+        defaultCard.detail.stringValue = linked ? L("Ready · links open with Chooser.", "Gotowe · linki trafiają do Chooser.") : L("One-time setup in macOS.", "Jednorazowa zgoda w macOS.")
+        defaultButton.title = linked ? L("✓ Connected", "✓ Połączono") : L("Connect…", "Połącz…")
         defaultButton.isEnabled = !linked
         let count = app.preferences.applicationRules.count
-        rulesCard.detail.stringValue = count == 0 ? "Opcjonalnie · np. Slack → Chrome." : "Zapisane reguły: \(count)."
-        progress.stringValue = linked && app.preferences.hasRecordedShortcut ? "Wszystko gotowe. Dopasuj resztę do siebie." : "Dwa krótkie kroki na początek."
+        rulesCard.detail.stringValue = count == 0 ? L("Optional · e.g. Slack → Chrome.", "Opcjonalnie · np. Slack → Chrome.") : L("Saved rules: \(count).", "Zapisane reguły: \(count).")
+        progress.stringValue = linked && app.preferences.hasRecordedShortcut ? L("You’re all set. Make it your own.", "Wszystko gotowe. Dopasuj resztę do siebie.") : L("Two quick steps to get started.", "Dwa krótkie kroki na początek.")
     }
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         (tabViewItem?.view as? LayoutSettingsView)?.refresh()
@@ -187,11 +194,16 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
     private func restoreShortcut() {
         let result = app.hotKey.register(app.preferences.shortcut)
         refresh()
-        if result != noErr { app.alert("Skrót jest niedostępny", "Nagraj nową kombinację. Kod systemowy: \(result).") }
+        if result != noErr { app.alert(L("Shortcut unavailable", "Skrót jest niedostępny"), L("Record a new shortcut. System code: \(result).", "Nagraj nową kombinację. Kod systemowy: \(result).")) }
     }
     func windowWillClose(_ notification: Notification) { recorder.cancel() }
     func windowDidResignKey(_ notification: Notification) { recorder.cancel() }
     func windowDidBecomeKey(_ notification: Notification) { refresh() }
+    @objc private func languageChanged(_ sender: NSPopUpButton) {
+        recorder.cancel()
+        let language = AppLanguage.allCases[sender.indexOfSelectedItem]
+        DispatchQueue.main.async { [weak app] in app?.changeLanguage(language) }
+    }
     @objc private func modeChanged() { app.setMode(Mode.allCases[mode.indexOfSelectedItem]) }
     @objc private func addFirstRule() { tabs.selectTabViewItem(at: 1); rulesView.addApplication() }
     @objc private func approveLogin() { SMAppService.openSystemSettingsLoginItems() }
@@ -201,7 +213,7 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
                 if SMAppService.mainApp.status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
                 else { try SMAppService.mainApp.register() }
             } else { try SMAppService.mainApp.unregister() }
-        } catch { app.alert("Nie można zmienić startu przy logowaniu", error.localizedDescription) }
+        } catch { app.alert(L("Cannot change launch at login", "Nie można zmienić startu przy logowaniu"), error.localizedDescription) }
         refresh()
     }
     @objc private func makeDefault() {
@@ -211,7 +223,7 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
     private func setDefault(schemes: [String], errors: [String]) {
         guard let scheme = schemes.first else {
             refresh()
-            if !errors.isEmpty { app.alert("Nie zmieniono wszystkich ustawień", errors.joined(separator: "\n")) }
+            if !errors.isEmpty { app.alert(L("Some settings could not be changed", "Nie zmieniono wszystkich ustawień"), errors.joined(separator: "\n")) }
             return
         }
         NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpenURLsWithScheme: scheme) { [weak self] error in

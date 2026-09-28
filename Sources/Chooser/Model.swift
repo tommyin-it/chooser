@@ -15,10 +15,10 @@ enum Browser: String, CaseIterable, Codable {
 
 enum Mode: String, CaseIterable {
     case choice, brave, chrome
-    var name: String { self == .choice ? "Wybór" : (self == .brave ? "Brave" : "Chrome") }
+    var name: String { self == .choice ? L("Choose", "Wybór") : (self == .brave ? "Brave" : "Chrome") }
     var browser: Browser? { Browser(rawValue: rawValue) }
     var next: Mode { Self.allCases[(Self.allCases.firstIndex(of: self)! + 1) % Self.allCases.count] }
-    var icon: NSImage { browser?.icon ?? NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Wybór")! }
+    var icon: NSImage { browser?.icon ?? NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: L("Choose", "Wybór"))! }
     // Only three tiny images are retained. Regenerate them on the next launch
     // if the installed browsers change; URL resolution for opening stays live.
     private static var menuIcons: [String: NSImage] = [:]
@@ -137,7 +137,7 @@ final class Preferences {
 enum ChooserStyle: String, CaseIterable {
     case strip, tiles, list, sidebar
     var name: String {
-        switch self { case .strip: return "Pasek"; case .tiles: return "Kafelki"; case .list: return "Lista"; case .sidebar: return "Dwie kolumny" }
+        switch self { case .strip: return L("Strip", "Pasek"); case .tiles: return L("Tiles", "Kafelki"); case .list: return L("List", "Lista"); case .sidebar: return L("Two columns", "Dwie kolumny") }
     }
     func horizontalButton(at index: Int) -> Bool { self == .list || index >= 2 }
 }

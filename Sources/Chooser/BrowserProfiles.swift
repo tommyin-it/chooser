@@ -69,8 +69,8 @@ final class ProfileLauncher {
         case missingProfile, missingBrowser
         var errorDescription: String? {
             switch self {
-            case .missingProfile: return "Ten profil jest niedostępny. Wybierz istniejący profil w Ustawieniach → Profile."
-            case .missingBrowser: return "Nie znaleziono wybranej przeglądarki."
+            case .missingProfile: return L("This profile is unavailable. Choose an existing profile in Settings → Profiles.", "Ten profil jest niedostępny. Wybierz istniejący profil w Ustawieniach → Profile.")
+            case .missingBrowser: return L("The selected browser could not be found.", "Nie znaleziono wybranej przeglądarki.")
             }
         }
     }
@@ -94,7 +94,7 @@ final class ProfileLauncher {
             DispatchQueue.main.async {
                 self?.processes[id] = nil
                 if process.terminationStatus != 0 {
-                    onError("\(profile.browser.name) nie przyjął żądania otwarcia profilu (kod \(process.terminationStatus)).")
+                    onError(L("\(profile.browser.name) could not open the profile (code \(process.terminationStatus)).", "\(profile.browser.name) nie przyjął żądania otwarcia profilu (kod \(process.terminationStatus))."))
                 }
             }
         }

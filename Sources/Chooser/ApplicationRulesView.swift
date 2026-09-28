@@ -5,15 +5,15 @@ final class ApplicationRulesView: NSView, NSTableViewDataSource, NSTableViewDele
     var onChange: (() -> Void)?
     private let preferences: Preferences
     private let table = NSTableView()
-    private let empty = NSTextField(labelWithString: "Zacznij od aplikacji, z której najczęściej otwierasz linki.")
+    private let empty = NSTextField(labelWithString: L("Start with the app you open links from most often.", "Zacznij od aplikacji, z której najczęściej otwierasz linki."))
     private var rules: [ApplicationRule] { preferences.applicationRules }
 
     init(preferences: Preferences) {
         self.preferences = preferences
         super.init(frame: .zero)
-        let title = NSTextField(labelWithString: "Przeglądarka dla aplikacji")
+        let title = NSTextField(labelWithString: L("Browser per app", "Przeglądarka dla aplikacji"))
         title.font = .systemFont(ofSize: 18, weight: .semibold)
-        let explanation = NSTextField(wrappingLabelWithString: "Wybierz aplikację, a potem jej przeglądarkę.")
+        let explanation = NSTextField(wrappingLabelWithString: L("Choose an app, then its browser.", "Wybierz aplikację, a potem jej przeglądarkę."))
         explanation.textColor = .secondaryLabelColor
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true
@@ -27,7 +27,7 @@ final class ApplicationRulesView: NSView, NSTableViewDataSource, NSTableViewDele
         table.intercellSpacing = NSSize(width: 0, height: 1)
         table.usesAlternatingRowBackgroundColors = false
         table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        for (id, name, width) in [("app", "Aplikacja", CGFloat(220)), ("browser", "Przeglądarka", CGFloat(160)), ("remove", "", CGFloat(44))] {
+        for (id, name, width) in [("app", L("App", "Aplikacja"), CGFloat(220)), ("browser", L("Browser", "Przeglądarka"), CGFloat(160)), ("remove", "", CGFloat(44))] {
             let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(id))
             column.title = name
             column.width = width
@@ -38,10 +38,10 @@ final class ApplicationRulesView: NSView, NSTableViewDataSource, NSTableViewDele
         table.dataSource = self
         table.delegate = self
         scroll.documentView = table
-        let add = NSButton(title: "Dodaj aplikację…", target: self, action: #selector(addApplication))
+        let add = NSButton(title: L("Add app…", "Dodaj aplikację…"), target: self, action: #selector(addApplication))
         add.bezelStyle = .rounded
-        let footnote = NSTextField(wrappingLabelWithString: "Bez reguły używany jest tryb z paska menu.")
-        footnote.toolTip = "Reguły mają pierwszeństwo przed trybem globalnym. Jeśli macOS nie udostępni źródła, obowiązuje tryb globalny. Brave i Chrome zachowują własne linki."
+        let footnote = NSTextField(wrappingLabelWithString: L("Apps without a rule use the menu bar mode.", "Bez reguły używany jest tryb z paska menu."))
+        footnote.toolTip = L("Rules override the global mode. If macOS does not identify the source, the global mode applies. Brave and Chrome keep their own links.", "Reguły mają pierwszeństwo przed trybem globalnym. Jeśli macOS nie udostępni źródła, obowiązuje tryb globalny. Brave i Chrome zachowują własne linki.")
         footnote.font = .systemFont(ofSize: 11)
         footnote.textColor = .secondaryLabelColor
         empty.font = .systemFont(ofSize: 11)
@@ -102,15 +102,15 @@ final class ApplicationRulesView: NSView, NSTableViewDataSource, NSTableViewDele
             popup.tag = row
             popup.target = self
             popup.action = #selector(changeBrowser(_:))
-            popup.setAccessibilityLabel("Przeglądarka dla \(rule.name)")
+            popup.setAccessibilityLabel(L("Browser for \(rule.name)", "Przeglądarka dla \(rule.name)"))
             return centered(popup)
         case "remove":
-            let remove = NSButton(image: NSImage(systemSymbolName: "trash", accessibilityDescription: "Usuń regułę")!, target: self, action: #selector(removeRule(_:)))
+            let remove = NSButton(image: NSImage(systemSymbolName: "trash", accessibilityDescription: L("Remove rule", "Usuń regułę"))!, target: self, action: #selector(removeRule(_:)))
             remove.isBordered = false
             remove.contentTintColor = .secondaryLabelColor
-            remove.toolTip = "Usuń regułę dla \(rule.name)"
+            remove.toolTip = L("Remove rule for \(rule.name)", "Usuń regułę dla \(rule.name)")
             remove.tag = row
-            remove.setAccessibilityLabel("Usuń regułę dla \(rule.name)")
+            remove.setAccessibilityLabel(L("Remove rule for \(rule.name)", "Usuń regułę dla \(rule.name)"))
             return centered(remove)
         default: return nil
         }
@@ -148,8 +148,8 @@ final class ApplicationRulesView: NSView, NSTableViewDataSource, NSTableViewDele
     @objc func addApplication() {
         guard let window else { return }
         let picker = NSOpenPanel()
-        picker.title = "Wybierz aplikację źródłową"
-        picker.prompt = "Dodaj regułę"
+        picker.title = L("Choose the source app", "Wybierz aplikację źródłową")
+        picker.prompt = L("Add rule", "Dodaj regułę")
         picker.directoryURL = URL(fileURLWithPath: "/Applications")
         picker.allowedContentTypes = [.applicationBundle]
         picker.allowsMultipleSelection = false
@@ -157,11 +157,11 @@ final class ApplicationRulesView: NSView, NSTableViewDataSource, NSTableViewDele
         picker.beginSheetModal(for: window) { [weak self] response in
             guard let self, response == .OK, let url = picker.url else { return }
             guard let id = Bundle(url: url)?.bundleIdentifier else {
-                self.showError("Wybrana aplikacja nie ma identyfikatora pakietu.")
+                self.showError(L("The selected app has no bundle identifier.", "Wybrana aplikacja nie ma identyfikatora pakietu."))
                 return
             }
             guard id != Bundle.main.bundleIdentifier, !Browser.allCases.contains(where: { $0.bundleID == id }) else {
-                self.showError("Wybierz aplikację, z której pochodzą linki, np. Slack. Chrome i Brave zachowują własne linki.")
+                self.showError(L("Choose the app your links come from, such as Slack. Chrome and Brave keep their own links.", "Wybierz aplikację, z której pochodzą linki, np. Slack. Chrome i Brave zachowują własne linki."))
                 return
             }
             var updated = self.rules
@@ -182,7 +182,7 @@ final class ApplicationRulesView: NSView, NSTableViewDataSource, NSTableViewDele
     private func showError(_ message: String) {
         guard let window else { return }
         let alert = NSAlert()
-        alert.messageText = "Nie można dodać reguły"
+        alert.messageText = L("Cannot add rule", "Nie można dodać reguły")
         alert.informativeText = message
         alert.beginSheetModal(for: window)
     }

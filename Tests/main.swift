@@ -119,20 +119,20 @@ let previousMode = delegate.preferences.mode
 delegate.preferences.mode = .choice
 defer { delegate.preferences.mode = previousMode }
 let handlesReopen = delegate.applicationShouldHandleReopen(application, hasVisibleWindows: false)
-check(!application.windows.contains { $0.isVisible && $0.title == "Chooser — Ustawienia" }, "Reopen unexpectedly opened Settings")
+check(!application.windows.contains { $0.isVisible && $0.title == L("Chooser — Settings", "Chooser — Ustawienia") }, "Reopen unexpectedly opened Settings")
 check(!handlesReopen, "Reopen should not ask AppKit to reopen windows")
 delegate.receive([URL(string: "https://example.com/chooser-regression")!])
 check(delegate.chooser.visible)
 _ = delegate.applicationShouldHandleReopen(application, hasVisibleWindows: true)
 check(delegate.chooser.visible, "Reopen dismissed the pending chooser")
-check(!application.windows.contains { $0.isVisible && $0.title == "Chooser — Ustawienia" })
+check(!application.windows.contains { $0.isVisible && $0.title == L("Chooser — Settings", "Chooser — Ustawienia") })
 delegate.chooser.hide()
 // A previously opened Settings window must not accompany the next URL.
 delegate.showSettings(nil)
-check(application.windows.contains { $0.isVisible && $0.title == "Chooser — Ustawienia" })
+check(application.windows.contains { $0.isVisible && $0.title == L("Chooser — Settings", "Chooser — Ustawienia") })
 delegate.receive([URL(string: "https://example.com/chooser-settings-regression")!])
 check(delegate.chooser.visible)
-check(!application.windows.contains { $0.isVisible && $0.title == "Chooser — Ustawienia" }, "Link delivery left Settings visible alongside the chooser")
+check(!application.windows.contains { $0.isVisible && $0.title == L("Chooser — Settings", "Chooser — Ustawienia") }, "Link delivery left Settings visible alongside the chooser")
 delegate.chooser.hide()
 print("PASS: reopen around link delivery never opens Settings or cancels the chooser")
 
@@ -273,3 +273,23 @@ for style in ChooserStyle.allCases {
     chooser.hide()
 }
 print("PASS: fourth-button profile selection in all four actual chooser layouts")
+
+// Language preference is isolated from the real application defaults.
+let languageSuite = "ChooserLanguageTests.\(UUID().uuidString)"
+let languageDefaults = UserDefaults(suiteName: languageSuite)!
+let originalLanguage = Localization.language
+equal(Localization.load(from: languageDefaults), .english)
+for language in AppLanguage.allCases {
+    Localization.select(language, defaults: languageDefaults)
+    equal(Localization.load(from: UserDefaults(suiteName: languageSuite)!), language)
+    equal(Mode.choice.name, language == .english ? "Choose" : "Wybór")
+    equal(ChooserStyle.sidebar.name, language == .english ? "Two columns" : "Dwie kolumny")
+    let controller = SettingsController(app: delegate)
+    equal(controller.window?.title, language == .english ? "Chooser — Settings" : "Chooser — Ustawienia")
+    controller.close()
+}
+languageDefaults.set("unknown", forKey: "appLanguage")
+equal(Localization.load(from: languageDefaults), .english)
+languageDefaults.removePersistentDomain(forName: languageSuite)
+Localization.language = originalLanguage
+print("PASS: English/Polish settings, persisted language and unsupported-language fallback")

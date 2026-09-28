@@ -32,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ready = true
         let code = hotKey.register(preferences.shortcut)
         if code != noErr {
-            alert("Skrót jest niedostępny", "Wybierz inną kombinację w ustawieniach. Kod systemowy: \(code).")
+            alert(L("Shortcut unavailable", "Skrót jest niedostępny"), L("Choose another shortcut in Settings. System code: \(code).", "Wybierz inną kombinację w ustawieniach. Kod systemowy: \(code)."))
         }
         let requests = initialRequests
         initialRequests.removeAll()
@@ -95,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         guard let application = browser.applicationURL else {
-            offerFallback(urls, browser: browser, message: "Nie znaleziono aplikacji \(browser.name).", remember: remember)
+            offerFallback(urls, browser: browser, message: L("Could not find \(browser.name).", "Nie znaleziono aplikacji \(browser.name)."), remember: remember)
             return
         }
         let configuration = NSWorkspace.OpenConfiguration()
@@ -114,22 +114,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !urls.isEmpty else { return false }
         do {
             try profileLauncher.open(urls, profile: profile) { [weak self] message in
-                self?.alert("Nie można otworzyć profilu", message)
+                self?.alert(L("Cannot open profile", "Nie można otworzyć profilu"), message)
             }
             return true
         } catch {
-            alert("Nie można otworzyć profilu", error.localizedDescription)
+            alert(L("Cannot open profile", "Nie można otworzyć profilu"), error.localizedDescription)
             return false
         }
     }
 
     private func offerFallback(_ urls: [URL], browser: Browser, message: String, remember: Bool) {
         let dialog = NSAlert()
-        dialog.messageText = "Nie można otworzyć w \(browser.name)"
+        dialog.messageText = L("Cannot open in \(browser.name)", "Nie można otworzyć w \(browser.name)")
         dialog.informativeText = message
         let available = browser.other.applicationURL != nil
-        dialog.addButton(withTitle: available ? "Otwórz w \(browser.other.name)" : "OK")
-        if available { dialog.addButton(withTitle: "Anuluj") }
+        dialog.addButton(withTitle: available ? L("Open in \(browser.other.name)", "Otwórz w \(browser.other.name)") : "OK")
+        if available { dialog.addButton(withTitle: L("Cancel", "Anuluj")) }
         NSApp.activate(ignoringOtherApps: true)
         if dialog.runModal() == .alertFirstButtonReturn, available { open(urls, in: browser.other, remember: remember) }
     }
@@ -159,13 +159,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(item)
         }
         menu.addItem(.separator())
-        let shortcut = NSMenuItem(title: "Przełącz tryb: \(preferences.shortcut.label)", action: nil, keyEquivalent: "")
+        let shortcut = NSMenuItem(title: L("Switch mode: \(preferences.shortcut.label)", "Przełącz tryb: \(preferences.shortcut.label)"), action: nil, keyEquivalent: "")
         menu.addItem(shortcut)
-        let settings = NSMenuItem(title: "Ustawienia…", action: #selector(showSettings(_:)), keyEquivalent: ",")
+        let settings = NSMenuItem(title: L("Settings…", "Ustawienia…"), action: #selector(showSettings(_:)), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Zakończ Chooser", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L("Quit Chooser", "Zakończ Chooser"), action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
         statusItem.menu = menu
@@ -180,6 +180,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         settings?.window?.makeKeyAndOrderFront(nil)
+    }
+    func changeLanguage(_ language: AppLanguage) {
+        let origin = settings?.window?.frame.origin
+        settings?.close()
+        settings = nil
+        Localization.select(language)
+        refreshMenu()
+        showSettings(nil)
+        if let origin { settings?.window?.setFrameOrigin(origin) }
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         // Launch Services may reopen the app as part of delivering a URL.

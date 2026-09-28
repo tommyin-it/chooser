@@ -52,7 +52,7 @@ final class ShortcutRecorder: NSButton {
         guard !recording else { return }
         recording = true
         onBegin?()
-        title = "Naciśnij kombinację…"
+        title = L("Press a shortcut…", "Naciśnij kombinację…")
         window?.makeFirstResponder(self)
     }
     func cancel() {
@@ -65,7 +65,7 @@ final class ShortcutRecorder: NSButton {
         if event.keyCode == 53 { cancel(); return }
         let flags = event.modifierFlags.intersection([.control, .option, .command, .shift])
         guard !flags.intersection([.control, .option, .command]).isEmpty else {
-            title = "Dodaj Control, Option lub Command"
+            title = L("Include Control, Option or Command", "Dodaj Control, Option lub Command")
             NSSound.beep()
             return
         }
@@ -74,8 +74,8 @@ final class ShortcutRecorder: NSButton {
         for (flag, carbon, symbol) in [(NSEvent.ModifierFlags.control, controlKey, "⌃"), (.option, optionKey, "⌥"), (.command, cmdKey, "⌘"), (.shift, shiftKey, "⇧")] {
             if flags.contains(flag) { modifiers |= UInt32(carbon); label += symbol }
         }
-        let special: [UInt16: String] = [36: "↩", 48: "⇥", 49: "Spacja", 51: "⌫", 123: "←", 124: "→", 125: "↓", 126: "↑"]
-        let character = special[event.keyCode] ?? event.charactersIgnoringModifiers?.uppercased() ?? "Klawisz \(event.keyCode)"
+        let special: [UInt16: String] = [36: "↩", 48: "⇥", 49: L("Space", "Spacja"), 51: "⌫", 123: "←", 124: "→", 125: "↓", 126: "↑"]
+        let character = special[event.keyCode] ?? event.charactersIgnoringModifiers?.uppercased() ?? L("Key \(event.keyCode)", "Klawisz \(event.keyCode)")
         recording = false
         onRecord?(Shortcut(keyCode: UInt32(event.keyCode), modifiers: modifiers, label: label + character))
     }
