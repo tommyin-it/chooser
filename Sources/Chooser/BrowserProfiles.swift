@@ -36,21 +36,35 @@ enum ProfileCatalog {
             .appendingPathComponent(browser == .chrome ? "Google/Chrome" : "BraveSoftware/Brave-Browser")
     }
     static func currentProfile(for browser: Browser) -> BrowserProfile? {
-        let available = profiles(for: browser)
-        if let data = try? Data(contentsOf: root(for: browser).appendingPathComponent("Local State")),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let state = json["profile"] as? [String: Any],
-           let last = state["last_used"] as? String,
-           let profile = available.first(where: { $0.directory == last }) { return profile }
-        return available.first(where: { $0.directory == "Default" }) ?? available.first
+        ProfileFolderAccess.shared.withAccess(for: browser) { root in
+            let available = profiles(for: browser, root: root)
+            if let data = try? Data(contentsOf: root.appendingPathComponent("Local State")),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let state = json["profile"] as? [String: Any],
+               let last = state["last_used"] as? String,
+               let profile = available.first(where: { $0.directory == last }) { return profile }
+            return available.first(where: { $0.directory == "Default" }) ?? available.first
+        }
     }
     static func validDirectory(_ directory: String) -> Bool {
         !directory.isEmpty && directory != "." && directory != ".." && !directory.contains("/") && !directory.contains("\\") && !directory.contains("\0")
     }
-    static func profiles(for browser: Browser, root customRoot: URL? = nil) -> [BrowserProfile] {
-        let root = customRoot ?? self.root(for: browser)
-        guard let data = try? Data(contentsOf: root.appendingPathComponent("Local State")),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+    static func profiles(for browser: Browser, root customRoot: URL? = nil, onError: ((Error) -> Void)? = nil) -> [BrowserProfile] {
+        guard let root = customRoot else {
+            return ProfileFolderAccess.shared.withAccess(for: browser) {
+                profiles(for: browser, root: $0, onError: onError)
+            }
+        }
+        let data: Data
+        do {
+            data = try Data(contentsOf: root.appendingPathComponent("Local State"))
+        } catch {
+            // A missing installation is normal; denied access is not an empty catalog.
+            let failure = error as NSError
+            if failure.domain != NSCocoaErrorDomain || failure.code != NSFileReadNoSuchFileError { onError?(error) }
+            return []
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let profile = json["profile"] as? [String: Any],
               let cache = profile["info_cache"] as? [String: [String: Any]] else { return [] }
         return cache.compactMap { directory, info in
@@ -102,5 +116,46 @@ final class ProfileLauncher {
         do { try process.run() }
         catch { processes[id] = nil; throw error }
         NSRunningApplication.runningApplications(withBundleIdentifier: profile.browser.bundleID).first?.activate(options: [])
+    }
+}
+
+
+/// Restore the user-selected browser folder for every catalog read, including launches.
+final class ProfileFolderAccess {
+    static let shared = ProfileFolderAccess()
+    private let defaults: UserDefaults
+    private let rootForBrowser: (Browser) -> URL
+    init(defaults: UserDefaults = .standard, rootForBrowser: @escaping (Browser) -> URL = ProfileCatalog.root) {
+        self.defaults = defaults
+        self.rootForBrowser = rootForBrowser
+    }
+    private func key(_ browser: Browser) -> String { "profileFolderBookmark.\(browser.rawValue)" }
+
+    static func isExpectedFolder(_ url: URL, for browser: Browser) -> Bool {
+        url.standardizedFileURL.path == ProfileCatalog.root(for: browser).standardizedFileURL.path
+    }
+    func remember(_ url: URL, for browser: Browser) throws {
+        guard url.standardizedFileURL.path == rootForBrowser(browser).standardizedFileURL.path else {
+            throw NSError(domain: NSCocoaErrorDomain, code: NSFileReadInvalidFileNameError,
+                          userInfo: [NSLocalizedDescriptionKey: L("Select the preselected \(browser.name) folder.", "Wybierz wskazany folder przeglądarki \(browser.name).")])
+        }
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        let bookmark = try url.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess], includingResourceValuesForKeys: nil, relativeTo: nil)
+        defaults.set(bookmark, forKey: key(browser))
+    }
+    func withAccess<T>(for browser: Browser, _ body: (URL) -> T) -> T {
+        let fallback = rootForBrowser(browser)
+        guard let bookmark = defaults.data(forKey: key(browser)) else { return body(fallback) }
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: bookmark, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale),
+              url.standardizedFileURL.path == fallback.standardizedFileURL.path else {
+            defaults.removeObject(forKey: key(browser))
+            return body(fallback)
+        }
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        if stale { try? remember(url, for: browser) }
+        return body(url)
     }
 }

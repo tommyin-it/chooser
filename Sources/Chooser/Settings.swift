@@ -179,7 +179,7 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
     }
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         (tabViewItem?.view as? LayoutSettingsView)?.refresh()
-        (tabViewItem?.view as? ProfileSettingsView)?.reload()
+        (tabViewItem?.view as? ProfileSettingsView)?.prepareForDisplay()
     }
     func dismissForLink() {
         recorder.cancel()
@@ -198,7 +198,10 @@ final class SettingsController: NSWindowController, NSWindowDelegate, NSTabViewD
     }
     func windowWillClose(_ notification: Notification) { recorder.cancel() }
     func windowDidResignKey(_ notification: Notification) { recorder.cancel() }
-    func windowDidBecomeKey(_ notification: Notification) { refresh() }
+    func windowDidBecomeKey(_ notification: Notification) {
+        refresh()
+        (tabs.selectedTabViewItem?.view as? ProfileSettingsView)?.prepareForDisplay()
+    }
     @objc private func languageChanged(_ sender: NSPopUpButton) {
         recorder.cancel()
         let language = AppLanguage.allCases[sender.indexOfSelectedItem]

@@ -157,6 +157,17 @@ let discovered = ProfileCatalog.profiles(for: .chrome, root: profileFixture)
 equal(discovered, [BrowserProfile(browser: .chrome, directory: "Profile 2", name: "Praca")])
 for invalid in ["", ".", "..", "../Default", "a/b", "a\\b", "a\0b"] { check(!ProfileCatalog.validDirectory(invalid)) }
 let extraProfile = discovered[0]
+// An unreadable catalog must be distinguishable from a browser with no profiles.
+let stateFile = profileFixture.appendingPathComponent("Local State")
+try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: stateFile.path)
+var catalogError: Error?
+let blockedProfiles = ProfileCatalog.profiles(for: .brave, root: profileFixture, onError: { catalogError = $0 })
+try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: stateFile.path)
+check(blockedProfiles.isEmpty)
+check(catalogError != nil, "Denied profile access must be reported, not silently hidden")
+catalogError = nil
+equal(ProfileCatalog.profiles(for: .brave, root: profileFixture.appendingPathComponent("not-installed"), onError: { catalogError = $0 }), [])
+check(catalogError == nil, "An absent browser should not produce an access warning")
 let trickyURL = URL(string: "https://example.com/?a=%22&b=$(test)#fragment")!
 equal(ProfileLauncher.arguments(profile: extraProfile, urls: [trickyURL]), ["--profile-directory=Profile 2", "--", trickyURL.absoluteString])
 let profileSuite = "ChooserProfileTests.\(UUID().uuidString)"
@@ -293,3 +304,113 @@ equal(Localization.load(from: languageDefaults), .english)
 languageDefaults.removePersistentDomain(forName: languageSuite)
 Localization.language = originalLanguage
 print("PASS: English/Polish settings, persisted language and unsupported-language fallback")
+
+// Exercise the profile browser through its actual AppKit controls.
+let browserProfiles = (0..<14).map {
+    BrowserProfile(browser: $0 < 8 ? .brave : .chrome, directory: "Profile \($0)", name: ["Personal", "Work", "Design", "Research", "Development", "Travel", "Projects"][$0 % 7])
+}
+var addedProfiles: [BrowserProfile] = []
+let profileBrowser = ProfileBrowserController(profiles: browserProfiles, savedIDs: []) { addedProfiles.append($0) }
+let browserWindow = profileBrowser.window!
+browserWindow.orderFront(nil)
+RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+browserWindow.contentView!.layoutSubtreeIfNeeded()
+func allSubviews(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(allSubviews) }
+let browserViews = allSubviews(browserWindow.contentView!)
+let profileScroll = browserViews.compactMap { $0 as? NSScrollView }.first!
+let profileSearch = browserViews.compactMap { $0 as? NSSearchField }.first!
+let profileFilter = browserViews.compactMap { $0 as? NSSegmentedControl }.first!
+func profileAddButtons() -> [NSButton] {
+    allSubviews(profileScroll.documentView!).compactMap { $0 as? NSButton }
+}
+equal(profileAddButtons().count, 14)
+check(profileScroll.frame.height > 200, "The profile browser needs room for its scrollable list")
+check(profileScroll.documentView!.frame.height > profileScroll.contentView.bounds.height)
+profileAddButtons()[0].performClick(nil)
+equal(addedProfiles, [browserProfiles[0]])
+check(!profileAddButtons()[0].isEnabled)
+profileAddButtons()[1].performClick(nil)
+equal(addedProfiles.count, 2)
+profileSearch.stringValue = "Research"
+profileBrowser.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: profileSearch))
+equal(profileAddButtons().count, 2)
+profileFilter.selectedSegment = 2
+profileFilter.sendAction(profileFilter.action, to: profileFilter.target)
+equal(profileAddButtons().count, 1)
+profileSearch.stringValue = "no-such-profile"
+profileBrowser.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: profileSearch))
+equal(profileAddButtons().count, 0)
+profileSearch.stringValue = ""
+profileFilter.selectedSegment = 0
+profileBrowser.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: profileSearch))
+equal(profileAddButtons().count, 14)
+check(!profileAddButtons()[0].isEnabled, "Filtering must preserve Added state")
+if let screenshot = ProcessInfo.processInfo.environment["CHOOSER_CAPTURE_PROFILE_UI"] {
+    browserWindow.contentView!.wantsLayer = true
+    browserWindow.contentView!.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+    browserWindow.contentView!.layoutSubtreeIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+    let content = browserWindow.contentView!
+    let bitmap = content.bitmapImageRepForCachingDisplay(in: content.bounds)!
+    content.cacheDisplay(in: content.bounds, to: bitmap)
+    try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: screenshot))
+}
+browserWindow.orderOut(nil)
+print("PASS: profile browser scrolling, one-click add, saved state, search and browser filters")
+
+// Permission guidance appears on demand, only once automatically, and recovers on return.
+var denyProfileAccess = true
+let permissionView = ProfileSettingsView(preferences: profilePreferences, loadProfiles: { browser, onError in
+    if denyProfileAccess {
+        onError?(NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoPermissionError))
+        return []
+    }
+    return [BrowserProfile(browser: browser, directory: "Default", name: "Personal")]
+})
+let permissionWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 650, height: 650), styleMask: [.titled], backing: .buffered, defer: false)
+permissionWindow.contentView = permissionView
+check(permissionWindow.attachedSheet == nil, "Creating Settings must not show a permission prompt")
+permissionWindow.makeKeyAndOrderFront(nil)
+permissionView.prepareForDisplay()
+RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+let permissionSheet = permissionWindow.attachedSheet
+check(permissionSheet != nil, "Blocked profiles must automatically open a folder permission panel")
+permissionView.requestAccessIfNeeded()
+equal(permissionWindow.sheets.count, 1)
+permissionWindow.endSheet(permissionSheet!, returnCode: .cancel)
+permissionSheet!.orderOut(nil)
+RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+permissionView.prepareForDisplay()
+RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+check(permissionWindow.attachedSheet == nil, "Cancel must suppress repeated automatic prompts")
+denyProfileAccess = false
+NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: application)
+let mainPickers = allSubviews(permissionView).compactMap { $0 as? NSPopUpButton }
+equal(mainPickers.map(\.numberOfItems), [2, 2])
+check(!allSubviews(permissionView).compactMap { $0 as? NSButton }.contains { $0.action == NSSelectorFromString("showAccessHelp") && !$0.isHidden }, "Access action must disappear after access succeeds")
+permissionWindow.orderOut(nil)
+print("PASS: automatic permission guidance, no repeated prompts, and access refresh on return")
+
+// User consent is scoped to the expected folder and restored for subsequent reads.
+let folderSuite = "ChooserFolderAccessTests.\(UUID().uuidString)"
+let folderDefaults = UserDefaults(suiteName: folderSuite)!
+defer { folderDefaults.removePersistentDomain(forName: folderSuite) }
+let folderAccess = ProfileFolderAccess(defaults: folderDefaults, rootForBrowser: { _ in profileFixture })
+try folderAccess.remember(profileFixture, for: .brave)
+check(folderDefaults.data(forKey: "profileFolderBookmark.brave") != nil)
+let restoredAccess = ProfileFolderAccess(defaults: folderDefaults, rootForBrowser: { _ in profileFixture })
+let restoredCatalog = restoredAccess.withAccess(for: .brave) { ProfileCatalog.profiles(for: .brave, root: $0) }
+equal(restoredCatalog.map(\.directory), ["Profile 2"])
+do {
+    try folderAccess.remember(profileFixture.deletingLastPathComponent(), for: .brave)
+    check(false, "An unrelated or parent folder must never be stored")
+} catch { }
+folderDefaults.set(Data([0, 1, 2]), forKey: "profileFolderBookmark.brave")
+equal(restoredAccess.withAccess(for: .brave) { $0 }, profileFixture)
+check(folderDefaults.data(forKey: "profileFolderBookmark.brave") == nil)
+for browser in Browser.allCases {
+    let panel = ProfileAccessRequest.makePanel(for: browser)
+    equal(panel.directoryURL?.standardizedFileURL.path, ProfileCatalog.root(for: browser).standardizedFileURL.path)
+    check(panel.canChooseDirectories && !panel.canChooseFiles && !panel.canCreateDirectories && !panel.allowsMultipleSelection)
+}
+print("PASS: folder bookmark persistence, restored catalog read, invalid grants, and pre-positioned permission panels")
